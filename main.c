@@ -2,35 +2,27 @@
 #include <stdlib.h>
 #include "RLE.h"
 
-int compare_int(const void *, const void *);
-void afficher_tab(int *, unsigned int);
-
-int compare_int(const void *a, const void *b)
+int compare_char(const void *, const void *);
+int compare_char(const void *a, const void *b)
 {
-    return *((const int *)a) == *((const int *)b) ? 1 : 0;
-}
-
-void afficher_tab(int *tab, unsigned int len)
-{
-    printf("tableau :\n");
-    unsigned int i;
-    for(i = 0; i < len; ++i)
-        printf("%d\n", tab[i]);
+    return *((const char *)a) == *((const char *)b) ? 1 : 0;
 }
 
 int main(void)
 {
-    int tab[10] = {2, 2, 2, 2, 8, 8, 8, 6, 6, 6},
-        *tab_decoded = NULL;
-    BYTE *tab_RLE_e = NULL;
-    unsigned int length_RLE_e, length2;
-    
-    if(encode_RLE(tab, sizeof(int), 10, (void **)&tab_RLE_e, &length_RLE_e, compare_int) == RLE_OK)
-        if(decode_RLE(tab_RLE_e, sizeof(int), length_RLE_e/(sizeof(int)+1), (void **)&tab_decoded, &length2) == RLE_OK)
-            afficher_tab(tab_decoded, length2);
-            
-    free(tab_RLE_e);
-    free(tab_decoded);
+    FILE *ifile = fopen("ifile.txt", "rb"),
+         *cfile = fopen("efile.txt", "wb+"),
+         *dfile = fopen("dfile.txt", "wb");
+
+    printf("Encoding...\n");
+    encode_file_RLE(ifile, cfile, sizeof(char), compare_char);
+    rewind(cfile);
+    printf("Done !\nDecoding...\n");
+    decode_file_RLE(cfile, dfile, sizeof(char));
+    printf("Done !\n");
+
+    fclose(ifile);
+    fclose(cfile);
+    fclose(dfile);
     return EXIT_SUCCESS;
 }
-
