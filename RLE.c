@@ -1,199 +1,128 @@
-#include <string.h> /*strlen*/
-#include <stdio.h>  /*printf, fprintf*/
-#include <stdlib.h> /*FILE, fopen*/
-#include "RLE.h"    /*prototypes*/
+#include "RLE.h"
+#include <string.h>
+#include <stdlib.h>
 
 /*
     returns RLE_OK if no problem has occured,
             RLE_FAILED_ALLOCATION if the allocation has failed,
             RLE_NULL_POINTER_ARG if any argument is a NULL pointer.
     args :
-        - const char *encoded is the string containing the encoded string ;
-        - unsigned int length_e is the length of the enoded string ;
-        - char **decoded is a pointer on the string that will contain the decoded string ;
-        - unsigned int *length_d is a pointer on the length of the decoded string.
-            those 2 last args are modifed by the function.
+        - initial is the array of objects which is not encoded yet ;
+        - size_of_elements is the size of each object of initial ;
+        - number_of_elements_i is the number of objects that contain initial ;
+        - encoded is a pointer on the aray that will contain the encoded objects ;
+        - number_of_elements_e is a pointer on the number of elements that encoded will contain
+        - compare is a pointer on a function which returns 1 if 2 elements of initial are equal, 0 if they aren't
 */
-int decode_RLE(const char *encoded, unsigned int length_e, char **decoded, unsigned int *length_d)
+int encode_RLE(const void *initial, size_t size_of_elements, unsigned int number_of_elements_i,
+        void **encoded, unsigned int *number_of_elements_e, int (*compare)(const void *, const void *))
 {
-    unsigned int i,
-                 j,
-                 index_d = 0;
-    *length_d = 0;
-
-    if(encoded == NULL)
-        fprintf(stderr, "Error decode_RLE : No encoded string sent\n");
-    else if(decoded == NULL)
-        fprintf(stderr, "Error decode_RLE : No free space to decode\n");
-    else if(length_d == NULL)
-        fprintf(stderr, "Error decode_RLE : NULL-pointer sent for the length\n");
+    const BYTE *tmp_ptr_i = initial;
+    BYTE *tmp_ptr_e;
+    void *tmp_value = malloc(size_of_elements);
+    unsigned int count,
+                 i,
+                 index = 0;
+    if(initial == NULL)
+        fprintf(stderr, "Error : encode_RLE : initial is a NULL pointer\n");
+    else if(encoded == NULL)
+        fprintf(stderr, "Error : encode_RLE : encoded is a NULL pointer\n");
+    else if(number_of_elements_e == NULL)
+        fprintf(stderr, "Error : encode_RLE : number_of_elements_e is a NULL pointer\n");
     else
     {
-        for(j = 0; j < length_e && encoded[j] != '\0'; j += 2)
+        if(tmp_value == NULL)
         {
-            (*length_d) += (unsigned int)encoded[j];
-        }
-
-        *decoded = malloc((*length_d+1) * sizeof(char));
-
-        if(*decoded == NULL)
-        {
-            fprintf(stderr, "Error decode_RLE : Failed to allocate the string to decode\n");
+            fprintf(stderr, "Error encode_RLE : allocation of tmp_value failed !\n");
             return RLE_FAILED_ALLOCATION;
         }
-        else
+        *number_of_elements_e = 0;
+        memcpy(tmp_value, initial, size_of_elements);
+        for(count = 0, i = 0; i <= number_of_elements_i; ++i)
         {
-            for(j = 0; j < length_e && encoded[j] != '\0'; j += 2)
-                for(i = 0; i < (unsigned int)encoded[j]; ++i)
-                    (*decoded)[index_d++] = encoded[j+1];
-            (*decoded)[*length_d] = '\0';
-        }
-        return RLE_OK;
-    }
-    return RLE_NULL_POINTER_ARG;
-}
-
-/*
-    returns RLE_OK if no problem has occured,
-            RLE_FAILED_ALLOCATION if the allocation has failed,
-            RLE_NULL_POINTER_ARG if any argument is a NULL pointer.
-    args :
-        - const char *initial is the string containing the not encoded yet string ;
-        - unsigned itn length_i is the length of the not encoded yet string ;
-        - char **encoded is a pointer on the string that will contain the encoded string ;
-        - unsigned int *length_e is a pointer on the length of the encoded string.
-            those two last args are modified by the function.
-*/
-int encode_RLE(const char *initial, unsigned int length_i, char **encoded, unsigned int *length_e)
-{
-    char tmp_char;
-    unsigned int i,
-                 count,
-                 index = 0;
-
-    if(initial == NULL)
-        fprintf(stderr, "Error encode_RLE : No string to encode was sent\n");
-    else if(encoded == NULL)
-        fprintf(stderr, "Error encode_RLE : No string sent to encode the string\n");
-    else if(length_e == NULL)
-        fprintf(stderr, "Error encode_RLE : NULL-pointer was sent for the length\n");
-    else
-    {
-        *length_e = 0;
-        for(count = 0, tmp_char = *initial, i = 0; i <= length_i; ++i)
-        {
-            if(initial[i] != tmp_char || count == 255)
+            if(!(*compare)(&tmp_ptr_i[i*size_of_elements], tmp_value) || count == 255)
             {
-                *length_e += 2;
+                *number_of_elements_e += 1 + size_of_elements;
                 count = 1;
-                tmp_char = initial[i];
+                memcpy(tmp_value, &tmp_ptr_i[i*size_of_elements], size_of_elements);
             }
             else
                 ++count;
         }
-
-        *encoded = malloc((*length_e+1) * sizeof(char));
+        tmp_ptr_e = *encoded = malloc(*number_of_elements_e * size_of_elements);
 
         if(*encoded == NULL)
         {
-            fprintf(stderr, "Error encode_RLE : No memory allocated to encode\n");
+            fprintf(stderr, "Error encode_RLE : No memory has been allocated to *encoded\n");
+            free(tmp_value);
             return RLE_FAILED_ALLOCATION;
         }
-        else
+        memcpy(tmp_value, initial, size_of_elements);
+        for(count = 0, i = 0; i <= number_of_elements_i; ++i)
         {
-            for(count = 0, tmp_char = *initial, i = 0; i <= length_i; ++i)
+            if(!(*compare)(&tmp_ptr_i[i*size_of_elements], tmp_value) || count == 255)
             {
-                if(initial[i] != tmp_char || count == 255)
-                {
-                    (*encoded)[index++] = (char)count;
-                    (*encoded)[index++] = tmp_char;
-                    count = 1;
-                    tmp_char = initial[i];
-                }
-                else
-                    ++count;
+                tmp_ptr_e[index++] = (BYTE)count;
+                memcpy(&tmp_ptr_e[index], tmp_value, size_of_elements);
+                index += size_of_elements;
+                count = 1;
+                memcpy(tmp_value, &tmp_ptr_i[i*size_of_elements], size_of_elements);
             }
-            (*encoded)[*length_e] = '\0';
+            else
+                ++count;
         }
+        free(tmp_value);
         return RLE_OK;
     }
     return RLE_NULL_POINTER_ARG;
 }
-/*
-    returns RLE_OK if no problem has occured,
-            RLE_NULL_POINTER_ARG if any of the args is a NULL pointer
-            the error value returned by encode_RLE() if an error has occured;
-    args :
-        - FILE *initial_file is the pre-opened file to encode
-        - FILE *encoded_file is the pre-opened file which will contain the encoded content of initial_file
-*/
-int encode_file_RLE(FILE *initial_file, FILE *encoded_file)
-{
-    char buffer[LENGTH],
-        *tmp_str;
-    unsigned int length_e;
-    int ret_value;
-    if(initial_file == NULL)
-    {
-        fprintf(stderr, "Error encode_file_RLE : initial file is a NULL pointer\n");
-        return RLE_NULL_POINTER_ARG;
-    }
-    else if(encoded_file == NULL)
-    {
-        fprintf(stderr, "Error encode_file_RLE : encoded_file is a NULL pointer\n");
-        return RLE_NULL_POINTER_ARG;
-    }
-    while(fgets(buffer, (LENGTH&1) ? LENGTH : LENGTH-1, initial_file) != NULL)
-    {
-        if((ret_value = encode_RLE(buffer, strlen(buffer), &tmp_str, &length_e)) != RLE_OK)
-        {
-            fprintf(stderr, "Error encode_file_RLE : Unable to encode : %s\n", buffer);
-            if(ret_value == RLE_FAILED_ALLOCATION)
-                fprintf(stderr, "\tallocation has failed\n");
-            else if(ret_value == RLE_NULL_POINTER_ARG)
-                fprintf(stderr, "\tnull pointer was sent\n");
-            return ret_value;
-        }
-        fprintf(encoded_file, tmp_str);
-        free(tmp_str);
-        tmp_str = NULL;
-    }
-    return RLE_OK;
-}
 
 /*
-    returns RLE_OK if no problem has accured,
-            RLE_NULL_POINTER_ARG if any of the args is a NULL pointer
-            the error value returned by decode_RLE() if an error has occured
+    returns RLE_OK if no problem has occured,
+            RLE_FAILED_ALLOCATION if the allocation has failed,
+            RLE_NULL_POINTER_ARG if any argument is a NULL pointer.
     args :
-        - FILE *encoded_file is the pre-opened encoded file to decode
-        - FILE *decoded_file is the pre-opened file which will contain the decoded content of encoded_file
+        - encoded is an array of encoded objects ;
+        - size_of_elements is the size of an object ;
+        - unsigned int numbers_of_elements_e is the number of elements that contain the array encoded ;
+        - decoded is a pointer on the new array that will contain the decoded objects ;
+        - number_of_elements_d is the number of elements that contains *decoded in the end.
 */
-int decode_file_RLE(FILE *encoded_file, FILE *decoded_file)
+int decode_RLE(const void *encoded, size_t size_of_elements, unsigned int number_of_elements_e,
+        void **decoded, unsigned int *number_of_elements_d)
 {
-    char buffer[LENGTH],
-        *tmp_str;
-    unsigned int length_d;
-    if(encoded_file == NULL)
+    unsigned int i,
+                 j,
+                 index = 0;
+    const BYTE *tmp_ptr_e = encoded;
+    BYTE *tmp_ptr_d;
+    if(encoded == NULL)
+        fprintf(stderr, "Error decode_RLE : encoded is a NULL pointer\n");
+    else if(decoded == NULL)
+        fprintf(stderr, "Error decode_RLE : decoded is a NULL pointer\n");
+    else if(number_of_elements_d == NULL)
+        fprintf(stderr, "Error decode_RLE : number_of_elements_d is a NULL pointer");
+    else
     {
-        fprintf(stderr, "Error decode_file_RLE : encoded_file is a NULL pointer\n");
-        return RLE_NULL_POINTER_ARG;
-    }
-    else if(decoded_file == NULL)
-    {
-        fprintf(stderr, "Error decode_file_RLE : decoded_file is a NULL pointer\n");
-        return RLE_NULL_POINTER_ARG;
-    }
-    while(fgets(buffer, (LENGTH&1) ? LENGTH : LENGTH-1, encoded_file) != NULL)
-    {
-        if(decode_RLE(buffer, strlen(buffer), &tmp_str, &length_d) == -1)
+        *number_of_elements_d = 0;
+        for(i = 0; i < number_of_elements_e; ++i)
+            *number_of_elements_d += (unsigned int)tmp_ptr_e[i*(size_of_elements+1)];
+
+        tmp_ptr_d = *decoded = malloc(*number_of_elements_d*size_of_elements);
+
+        if(*decoded == NULL)
         {
-            printf("Error decode_file_RLE : Unable to decompress : %s\n", buffer);
-            return -1;
+            fprintf(stderr, "Error decode_RLE : No memory alocated to *decoded !\n");
+            return RLE_FAILED_ALLOCATION;
         }
-        fprintf(decoded_file, tmp_str);
-        free(tmp_str);
+        for(i = 0; i < number_of_elements_e; ++i)
+            for(j = 0; j < (unsigned int)tmp_ptr_e[i*(size_of_elements+1)]; ++j)
+            {
+                memcpy(&tmp_ptr_d[size_of_elements*index], &tmp_ptr_e[i*(size_of_elements+1)+1], size_of_elements);
+                ++index;
+            }
+        return RLE_OK;
     }
-    return 0;
+    return RLE_NULL_POINTER_ARG;
 }
 
