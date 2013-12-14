@@ -11,7 +11,7 @@
         - const char *encoded is the string containing the encoded string ;
         - unsigned int length_e is the length of the enoded string ;
         - char **decoded is a pointer on the string that will contain the decoded string ;
-        - unsigned int *length_d is a pointer on the length of the decoded string ;
+        - unsigned int *length_d is a pointer on the length of the decoded string.
             those 2 last args are modifed by the function.
 */
 int decode_RLE(const char *encoded, unsigned int length_e, char **decoded, unsigned int *length_d)
@@ -22,11 +22,11 @@ int decode_RLE(const char *encoded, unsigned int length_e, char **decoded, unsig
     *length_d = 0;
 
     if(encoded == NULL)
-        fprintf(stderr, "Error decode_RLE : No encoded string sent (decode)\n");
+        fprintf(stderr, "Error decode_RLE : No encoded string sent\n");
     else if(decoded == NULL)
-        fprintf(stderr, "Error decode_RLE : No free space to decode (decode)\n");
+        fprintf(stderr, "Error decode_RLE : No free space to decode\n");
     else if(length_d == NULL)
-        fprintf(stderr, "Error decode_RLE : NULL-pointer sent for the length (decode)\n");
+        fprintf(stderr, "Error decode_RLE : NULL-pointer sent for the length\n");
     else
     {
         for(j = 0; j < length_e && encoded[j] != '\0'; j += 2)
@@ -62,6 +62,7 @@ int decode_RLE(const char *encoded, unsigned int length_e, char **decoded, unsig
         - unsigned itn length_i is the length of the not encoded yet string ;
         - char **encoded is a pointer on the string that will contain the encoded string ;
         - unsigned int *length_e is a pointer on the length of the encoded string.
+            those two last args are modified by the function.
 */
 int encode_RLE(const char *initial, unsigned int length_i, char **encoded, unsigned int *length_e)
 {
@@ -71,11 +72,11 @@ int encode_RLE(const char *initial, unsigned int length_i, char **encoded, unsig
                  index = 0;
 
     if(initial == NULL)
-        fprintf(stderr, "Error encode_RLE : No string to encode was sent (encode)\n");
+        fprintf(stderr, "Error encode_RLE : No string to encode was sent\n");
     else if(encoded == NULL)
-        fprintf(stderr, "Error encode_RLE : No string sent to encode the string (encode)\n");
+        fprintf(stderr, "Error encode_RLE : No string sent to encode the string\n");
     else if(length_e == NULL)
-        fprintf(stderr, "Error encode_RLE : NULL-pointer was sent for the length (encode)\n");
+        fprintf(stderr, "Error encode_RLE : NULL-pointer was sent for the length\n");
     else
     {
         *length_e = 0;
@@ -195,3 +196,4 @@ int decode_file_RLE(FILE *encoded_file, FILE *decoded_file)
     }
     return 0;
 }
+
