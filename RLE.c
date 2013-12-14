@@ -126,3 +126,111 @@ int decode_RLE(const void *encoded, size_t size_of_elements, unsigned int number
     return RLE_NULL_POINTER_ARG;
 }
 
+/*
+    returns RLE_OK if no problem has occured,
+            RLE_FAILED_ALLOCATION if any buffer allocation has failed
+            RLE_NULL_POINTER if any argument is a NULL pointer
+            the error value of encode_RLE if an error occures
+    args :
+        - ifile is the pre-opened binary file to encode ;
+        - efile is the pre-opened binary file which will contain the encoded ifile file ;
+        - size_of_elements is the size of any element in the ifile file ;
+        compare is the callback funtion that will ba used by encode_RLE.
+*/
+int encode_file_RLE(FILE *ifile, FILE *efile, size_t size_of_elements, int (*compare)(const void *, const void *))
+{
+    BYTE *buffer = malloc(LENGTH*size_of_elements),
+         *encoded;
+    size_t ret,
+           tmp_fwrite;
+    unsigned int number_of_encoded_elements;
+    int tmp;
+    if(buffer == NULL)
+    {
+        fprintf(stderr, "Error encode_file_RLE : buffer non allocated\n");
+        return RLE_FAILED_ALLOCATION;
+    }
+    else if(ifile == NULL)
+        fprintf(stderr, "Error encode_file_RLE : ifile is a NULL pointer\n");
+    else if(efile == NULL)
+        fprintf(stderr, "Error encode_file_RLE : efile is a NULL pointer\n");
+    if(compare == NULL)
+        fprintf(stderr, "Error encode_file_RLE : compare is a NULL pointer\n");
+    else
+    {
+        while((ret = fread(buffer, size_of_elements, LENGTH, ifile)) > 0)
+        {
+            if((tmp = encode_RLE(buffer, size_of_elements, ret, (void **)&encoded, &number_of_encoded_elements, compare)) == RLE_OK)
+            {
+                if((tmp_fwrite = fwrite(encoded, size_of_elements, number_of_encoded_elements, efile)) != number_of_encoded_elements)
+                {
+                    fprintf(stderr, "Error encode_file_RLE : writting error : too %s elements written !\n",
+                            number_of_encoded_elements - tmp_fwrite > 0 ? "few" : "many");
+                    return RLE_WRITING_ERROR;
+                }
+                else
+                    free(encoded);
+            }
+            else
+            {
+                fprintf(stderr, "Error encode_file_RLE : Unable to encode %s\n", buffer);
+                return tmp;
+            }
+        }
+        return RLE_OK;
+    }
+    return RLE_NULL_POINTER_ARG;
+}
+
+/*
+    returns RLE_OK if no problem has occured,
+            RLE_FAILED_ALLOCATION if any buffer allocation has failed
+            RLE_NULL_POINTER if any argument is a NULL pointer
+            the error value of decode_RLE if an error occures
+    args :
+        - efile is the pre-opened binary file to decode ;
+        - dfile is the pre-opened binary file which will contain the decoded efile file ;
+        - size_of_elements is the size of any element in the efile file.
+*/
+int decode_file_RLE(FILE *efile, FILE *dfile, size_t size_of_elements)
+{
+    BYTE *buffer = malloc(LENGTH*(size_of_elements+1)),
+         *tmp_decoded;
+    size_t ret,
+           tmp_fwrite;
+    int tmp;
+    unsigned int number_of_decoded_elements;
+    if(buffer == NULL)
+    {
+        fprintf(stderr, "Error decode_file_RLE : buffer non allocated\n");
+        return RLE_FAILED_ALLOCATION;
+    }
+    else if(efile == NULL)
+        fprintf(stderr, "Error decode_file_RLE : efile is a NULL pointer\n");
+    else if(dfile == NULL)
+        fprintf(stderr, "Error decode_file_RLE : dfile is a NULL pointer\n");
+    else
+    {
+        while((ret = fread(buffer, size_of_elements+1, LENGTH, efile)) > 0)
+        {
+            if((tmp = decode_RLE(buffer, size_of_elements, ret, (void **)&tmp_decoded, &number_of_decoded_elements)) == RLE_OK)
+            {
+                if((tmp_fwrite = fwrite(tmp_decoded, size_of_elements, number_of_decoded_elements, dfile)) != number_of_decoded_elements)
+                {
+                    fprintf(stderr, "Error decode_file_RLE : writing error : too %s elements written !\n",
+                            number_of_decoded_elements - tmp_fwrite > 0 ? "few" : "many");
+                    return RLE_WRITING_ERROR;
+                }
+                else
+                    free(tmp_decoded);
+            }
+            else
+            {
+                fprintf(stderr, "Error decode_file_RLE : Unable to decode %s\n", buffer);
+                return tmp;
+            }
+        }
+        return RLE_OK;
+    }
+    return RLE_NULL_POINTER_ARG;
+}
