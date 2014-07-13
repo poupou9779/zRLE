@@ -15,66 +15,65 @@
         - compare is a pointer on a function which returns 1 if 2 elements of initial are equal, 0 if they aren't
 */
 int encode_RLE(const void *initial, size_t size_of_elements, unsigned int number_of_elements_i,
-        void **encoded, unsigned int *number_of_elements_e, int (*compare)(const void *, const void *))
+               void **encoded, unsigned int *number_of_elements_e, int (*compare)(const void *, const void *))
 {
     const BYTE *tmp_ptr_i = initial;
     BYTE *tmp_ptr_e;
     void *tmp_value = malloc(size_of_elements);
-    unsigned int count,
-                 i,
+    unsigned int count = 0,
+                 i = 0,
                  index = 0;
-    if(initial == NULL)
-        fprintf(stderr, "Error : encode_RLE : initial is a NULL pointer\n");
-    else if(encoded == NULL)
-        fprintf(stderr, "Error : encode_RLE : encoded is a NULL pointer\n");
-    else if(number_of_elements_e == NULL)
-        fprintf(stderr, "Error : encode_RLE : number_of_elements_e is a NULL pointer\n");
-    else
+    if(initial == NULL || encoded == NULL || number_of_elements_e == NULL || compare == NULL)
     {
-        if(tmp_value == NULL)
-        {
-            fprintf(stderr, "Error encode_RLE : allocation of tmp_value failed !\n");
-            return RLE_FAILED_ALLOCATION;
-        }
-        *number_of_elements_e = 0;
-        memcpy(tmp_value, initial, size_of_elements);
-        for(count = 0, i = 0; i <= number_of_elements_i; ++i)
-        {
-            if(!(*compare)(&tmp_ptr_i[i*size_of_elements], tmp_value) || count == 255)
-            {
-                *number_of_elements_e += 1 + size_of_elements;
-                count = 1;
-                memcpy(tmp_value, &tmp_ptr_i[i*size_of_elements], size_of_elements);
-            }
-            else
-                ++count;
-        }
-        tmp_ptr_e = *encoded = malloc(*number_of_elements_e * size_of_elements);
-
-        if(*encoded == NULL)
-        {
-            fprintf(stderr, "Error encode_RLE : No memory has been allocated to *encoded\n");
-            free(tmp_value);
-            return RLE_FAILED_ALLOCATION;
-        }
-        memcpy(tmp_value, initial, size_of_elements);
-        for(count = 0, i = 0; i <= number_of_elements_i; ++i)
-        {
-            if(!(*compare)(&tmp_ptr_i[i*size_of_elements], tmp_value) || count == 255)
-            {
-                tmp_ptr_e[index++] = (BYTE)count;
-                memcpy(&tmp_ptr_e[index], tmp_value, size_of_elements);
-                index += size_of_elements;
-                count = 1;
-                memcpy(tmp_value, &tmp_ptr_i[i*size_of_elements], size_of_elements);
-            }
-            else
-                ++count;
-        }
-        free(tmp_value);
-        return RLE_OK;
+        fprintf(stderr, "Error in encode_RLE : initial %s NULL\t\tencoded %s NULL\t\tnumber_of_elements_e %s NULL\t\tcompare %s NULL\n",
+                initial == NULL ? "==" : "!=", encoded == NULL ? "==" : "!=", number_of_elements_e == NULL ? "==" : "!=", compare == NULL ? "==" : "!=");
+        return RLE_NULL_POINTER_ARG;
     }
-    return RLE_NULL_POINTER_ARG;
+    if(tmp_value == NULL)
+    {
+        fprintf(stderr, "Error encode_RLE : allocation of tmp_value failed !\n");
+        return RLE_FAILED_ALLOCATION;
+    }
+    *number_of_elements_e = 0;
+
+    memcpy(tmp_value, initial, size_of_elements);
+
+    for(i = 0; i <= number_of_elements_i; ++i)
+    {
+        if((*compare)(&tmp_ptr_i[i*size_of_elements], tmp_value) == 0 || count == 255)
+        {
+            *number_of_elements_e += 1;
+            count = 1;
+            memcpy(tmp_value, &tmp_ptr_i[i*size_of_elements], size_of_elements);
+        }
+        else
+            ++count;
+    }
+    *encoded = malloc(*number_of_elements_e * size_of_elements);
+    tmp_ptr_e = (BYTE *)*encoded;
+
+    if(*encoded == NULL)
+    {
+        fprintf(stderr, "Error encode_RLE : No memory has been allocated to *encoded\n");
+        free(tmp_value);
+        return RLE_FAILED_ALLOCATION;
+    }
+    memcpy(tmp_value, initial, size_of_elements);
+    for(count = 0, i = 0; i <= number_of_elements_i; ++i)
+    {
+        if(!(*compare)(&tmp_ptr_i[i*size_of_elements], tmp_value) || count == 255)
+        {
+            tmp_ptr_e[index++] = (BYTE)count;
+            memcpy(&tmp_ptr_e[index], tmp_value, size_of_elements);
+            index += size_of_elements;
+            count = 1;
+            memcpy(tmp_value, &tmp_ptr_i[i*size_of_elements], size_of_elements);
+        }
+        else
+            ++count;
+    }
+    free(tmp_value);
+    return RLE_OK;
 }
 
 /*
@@ -89,41 +88,35 @@ int encode_RLE(const void *initial, size_t size_of_elements, unsigned int number
         - number_of_elements_d is the number of elements that contains *decoded in the end.
 */
 int decode_RLE(const void *encoded, size_t size_of_elements, unsigned int number_of_elements_e,
-        void **decoded, unsigned int *number_of_elements_d)
+               void **decoded, unsigned int *number_of_elements_d)
 {
     unsigned int i,
-                 j,
-                 index = 0;
+             j,
+             index = 0;
     const BYTE *tmp_ptr_e = encoded;
     BYTE *tmp_ptr_d;
-    if(encoded == NULL)
-        fprintf(stderr, "Error decode_RLE : encoded is a NULL pointer\n");
-    else if(decoded == NULL)
-        fprintf(stderr, "Error decode_RLE : decoded is a NULL pointer\n");
-    else if(number_of_elements_d == NULL)
-        fprintf(stderr, "Error decode_RLE : number_of_elements_d is a NULL pointer");
-    else
+
+    if(decoded == NULL || encoded == NULL || number_of_elements_d == NULL)
     {
-        *number_of_elements_d = 0;
-        for(i = 0; i < number_of_elements_e; ++i)
-            *number_of_elements_d += (unsigned int)tmp_ptr_e[i*(size_of_elements+1)];
-
-        tmp_ptr_d = *decoded = malloc(*number_of_elements_d*size_of_elements);
-
-        if(*decoded == NULL)
-        {
-            fprintf(stderr, "Error decode_RLE : No memory alocated to *decoded !\n");
-            return RLE_FAILED_ALLOCATION;
-        }
-        for(i = 0; i < number_of_elements_e; ++i)
-            for(j = 0; j < (unsigned int)tmp_ptr_e[i*(size_of_elements+1)]; ++j)
-            {
-                memcpy(&tmp_ptr_d[size_of_elements*index], &tmp_ptr_e[i*(size_of_elements+1)+1], size_of_elements);
-                ++index;
-            }
-        return RLE_OK;
+        fprintf(stderr, "Error in decode_RLE : decoded %s NULL\t\tencoded %s NULL\t\tnumber_of_elements_d %s NULL\n",
+                decoded == NULL ? "==" : "!=", encoded == NULL ? "==" : "!=", number_of_elements_d == NULL ? "==" : "!=");
+        return RLE_NULL_POINTER_ARG;
     }
-    return RLE_NULL_POINTER_ARG;
+    *number_of_elements_d = 0;
+    for(i = 0; i < number_of_elements_e; ++i)
+        *number_of_elements_d += (unsigned int)tmp_ptr_e[i*(size_of_elements+1)];
+    if((tmp_ptr_d = *decoded = malloc((*number_of_elements_d)*size_of_elements)) == NULL)
+    {
+        fprintf(stderr, "Error decode_RLE : No memory alocated to *decoded !\n");
+        return RLE_FAILED_ALLOCATION;
+    }
+    for(i = 0; i < number_of_elements_e; ++i)
+        for(j = 0; j < (unsigned int)tmp_ptr_e[i*(size_of_elements+1)]; ++j)
+        {
+            memcpy(&tmp_ptr_d[size_of_elements*index], &tmp_ptr_e[i*(size_of_elements+1)+1], size_of_elements);
+            ++index;
+        }
+    return RLE_OK;
 }
 
 /*
@@ -140,7 +133,7 @@ int decode_RLE(const void *encoded, size_t size_of_elements, unsigned int number
 int encode_file_RLE(FILE *ifile, FILE *efile, size_t size_of_elements, int (*compare)(const void *, const void *))
 {
     BYTE *buffer = malloc(LENGTH*size_of_elements),
-         *encoded;
+          *encoded;
     size_t ret,
            tmp_fwrite;
     unsigned int number_of_encoded_elements;
@@ -195,7 +188,7 @@ int encode_file_RLE(FILE *ifile, FILE *efile, size_t size_of_elements, int (*com
 int decode_file_RLE(FILE *efile, FILE *dfile, size_t size_of_elements)
 {
     BYTE *buffer = malloc(LENGTH*(size_of_elements+1)),
-         *tmp_decoded;
+          *tmp_decoded;
     size_t ret,
            tmp_fwrite;
     int tmp;
@@ -234,3 +227,4 @@ int decode_file_RLE(FILE *efile, FILE *dfile, size_t size_of_elements)
     }
     return RLE_NULL_POINTER_ARG;
 }
+
