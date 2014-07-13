@@ -7,6 +7,6 @@ Warning :
 * encode_RLE sin't bugged anymore
 * decode_RLE crashes l.108 when I run the program but when I try to debug with gdb, nothing goes wrong. STILL GOTTA BE CHECKED !
 * file functions aren't checked, TODO in August
-* 
-=======
+
+======
 !! Currently still bugged, will be whecked in August !!
